@@ -34,6 +34,12 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         confirmed_df['Long'] = confirmed_df['Long'].astype(float)
         #confirmed = gpd.GeoDataFrame(confirmed_df, geometry=gpd.points_from_xy(confirmed_df.Long, confirmed_df.Lat))
         confirmed_df = confirmed_df.loc[:, ['Province/State','Country/Region','Lat','Long',confirmed_df.columns[-1]]]
+        #'split’ : dict like {‘index’ -> [index], ‘columns’ -> [columns], ‘data’ -> [values]}
+        #'records’ : list like [{column -> value}, … , {column -> value}]
+        #'index’ : dict like {index -> {column -> value}}
+        #'columns’ : dict like {column -> {index -> value}}
+        #‘values’ : just the values array
+        #‘table’ : dict like {‘schema’: {schema}, ‘data’: {data}}
         strGeoJson = confirmed_df.to_json(orient="records")
         #return func.HttpResponse(f"Hello, {name}. This HTTP triggered function executed successfully.")
         return func.HttpResponse(strGeoJson)
