@@ -41,7 +41,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         #'columns’ : dict like {column -> {index -> value}}
         #‘values’ : just the values array
         #‘table’ : dict like {‘schema’: {schema}, ‘data’: {data}}
-        strGeoJson = confirmed_df.to_json(orient="index")
+        strGeoJson = confirmed_df.to_json(orient="records")
         #return func.HttpResponse(f"Hello, {name}. This HTTP triggered function executed successfully.")
         return func.HttpResponse(strGeoJson)
     else:
