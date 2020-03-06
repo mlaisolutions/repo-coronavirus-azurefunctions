@@ -34,6 +34,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         confirmed_df['Long'] = confirmed_df['Long'].astype(float)
         #confirmed = gpd.GeoDataFrame(confirmed_df, geometry=gpd.points_from_xy(confirmed_df.Long, confirmed_df.Lat))
         confirmed_df = confirmed_df.loc[:, ['Province/State','Country/Region','Lat','Long',confirmed_df.columns[-1]]]
+        confirmed_df = confirmed_df.dropna()
         #'split’ : dict like {‘index’ -> [index], ‘columns’ -> [columns], ‘data’ -> [values]}
         #'records’ : list like [{column -> value}, … , {column -> value}]
         #'index’ : dict like {index -> {column -> value}}
