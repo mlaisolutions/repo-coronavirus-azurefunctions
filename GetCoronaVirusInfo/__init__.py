@@ -26,10 +26,11 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             df1 = get_data_frame('confirmed')
             df2 = get_data_frame('recovered')
             df3 = get_data_frame('deaths')
-            df = pd.concat([df1,df2,df3],axis=0)
+            df = pd.concat([df1,df2,df3])
         else:
             df = get_data_frame(name)
-        cols = ['Province/State','Country/Region','Lat','Long',df.columns[-1],df.columns[-2]]
+            df['CaseType']=name
+        cols = ['Province/State','Country/Region','Lat','Long','LatestDate','LatestCount','CaseType']
         geojson = df_to_geojson(df, cols,'Lat','Long')
         geojson_str = json.dumps(geojson, indent=2)
         return func.HttpResponse(geojson_str)
@@ -55,13 +56,15 @@ def get_data_frame(casetype):
     STORAGEACCOUNTKEY= 'OcSGt1fCikgKjViIJTa6D0EcPLl2mK0YHVbxH25B7D4YV9VdwR/RYJ91sJqLbnh9janaMTOt6+fqChY+gsFFxQ=='
     LOCALFILENAME= 'local_file_name'
     CONTAINERNAME= 'data'
-    BLOBNAME= 'time_series_covid_19_confirmed.csv'
     if casetype=="confirmed":
-            BLOBNAME = "time_series_covid_19_confirmed.csv"
+        BLOBNAME = "time_series_covid_19_confirmed.csv"
     elif casetype=="recovered":
-            BLOBNAME = "time_series_covid_19_recovered.csv"
+        BLOBNAME = "time_series_covid_19_recovered.csv"
     elif casetype=="deaths":
-            BLOBNAME = "time_series_covid_19_deaths.csv"
+        BLOBNAME = "time_series_covid_19_deaths.csv"
+    else:
+        BLOBNAME= 'time_series_covid_19_confirmed.csv'
+
 
     blob_service=BlockBlobService(account_name=STORAGEACCOUNTNAME,account_key=STORAGEACCOUNTKEY)
     blob_service.get_blob_to_path(CONTAINERNAME,BLOBNAME,LOCALFILENAME)
@@ -69,9 +72,11 @@ def get_data_frame(casetype):
     cases_df = pd.read_csv(LOCALFILENAME)
     cases_df['Lat'] = cases_df['Lat'].astype(float)
     cases_df['Long'] = cases_df['Long'].astype(float)
-    cases_df['casetype'] = casetype
+    cases_df['LatestDate'] = cases_df.columns[-1]
+    cases_df.rename(columns = {cases_df.columns[-2]:'LatestCount'}, inplace = True) 
+    cases_df['CaseType'] = casetype
     #confirmed = gpd.GeoDataFrame(confirmed_df, geometry=gpd.points_from_xy(confirmed_df.Long, confirmed_df.Lat))
-    cases_df = cases_df.loc[:, ['Province/State','Country/Region','Lat','Long',cases_df.columns[-1],cases_df.columns[-2]]]
+    cases_df = cases_df.loc[:, ['Province/State','Country/Region','Lat','Long','LatestDate','LatestCount','CaseType']]
     cases_df = cases_df.dropna()
     #'split’ : dict like {‘index’ -> [index], ‘columns’ -> [columns], ‘data’ -> [values]}
     #'records’ : list like [{column -> value}, … , {column -> value}]
