@@ -8,12 +8,6 @@ import tables
 import geojson
 import json
 
-STORAGEACCOUNTNAME= 'storagelabcoronavirus'
-STORAGEACCOUNTKEY= 'OcSGt1fCikgKjViIJTa6D0EcPLl2mK0YHVbxH25B7D4YV9VdwR/RYJ91sJqLbnh9janaMTOt6+fqChY+gsFFxQ=='
-LOCALFILENAME= 'local_file_name'
-CONTAINERNAME= 'data'
-BLOBNAME= 'time_series_covid_19_confirmed.csv'
-
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
     logging.info('Python HTTP trigger function processed a request.')
@@ -28,32 +22,15 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             name = req_body.get('name')
 
     if name:
-        if name=="confirmed":
-            BLOBNAME = "time_series_covid_19_confirmed.csv"
-        elif name=="recovered":
-            BLOBNAME = "time_series_covid_19_recovered.csv"
-        elif name=="deaths":
-            BLOBNAME = "time_series_covid_19_deaths.csv"
-
-        blob_service=BlockBlobService(account_name=STORAGEACCOUNTNAME,account_key=STORAGEACCOUNTKEY)
-        blob_service.get_blob_to_path(CONTAINERNAME,BLOBNAME,LOCALFILENAME)
-        #message = "File "+ BLOBNAME + "downloaded." 
-        cases_df = pd.read_csv(LOCALFILENAME)
-        cases_df['Lat'] = cases_df['Lat'].astype(float)
-        cases_df['Long'] = cases_df['Long'].astype(float)
-        #confirmed = gpd.GeoDataFrame(confirmed_df, geometry=gpd.points_from_xy(confirmed_df.Long, confirmed_df.Lat))
-        cases_df = cases_df.loc[:, ['Province/State','Country/Region','Lat','Long',cases_df.columns[-1]]]
-        cases_df = cases_df.dropna()
-        #'split’ : dict like {‘index’ -> [index], ‘columns’ -> [columns], ‘data’ -> [values]}
-        #'records’ : list like [{column -> value}, … , {column -> value}]
-        #'index’ : dict like {index -> {column -> value}}
-        #'columns’ : dict like {column -> {index -> value}}
-        #‘values’ : just the values array
-        #‘table’ : dict like {‘schema’: {schema}, ‘data’: {data}}
-        #strGeoJson = cases_df.to_json(orient="records")
-        #return func.HttpResponse(strGeoJson)
-        cols = ['Province/State','Country/Region','Lat','Long',cases_df.columns[-1]]
-        geojson = df_to_geojson(cases_df, cols,'Lat','Long')
+        if name=="all":
+            df1 = get_data_frame('confirmed')
+            df2 = get_data_frame('recovered')
+            df3 = get_data_frame('deaths')
+            df = pd.concat([df1,df2,df3],axis=0)
+        else:
+            df = get_data_frame(name)
+        cols = ['Province/State','Country/Region','Lat','Long',df.columns[-1],df.columns[-2]]
+        geojson = df_to_geojson(df, cols,'Lat','Long')
         geojson_str = json.dumps(geojson, indent=2)
         return func.HttpResponse(geojson_str)
     else:
@@ -73,3 +50,35 @@ def df_to_geojson(df, properties, lat='latitude', lon='longitude'):
             feature['properties'][prop] = row[prop]
         geojson['features'].append(feature)
     return geojson
+def get_data_frame(casetype):
+    STORAGEACCOUNTNAME= 'storagelabcoronavirus'
+    STORAGEACCOUNTKEY= 'OcSGt1fCikgKjViIJTa6D0EcPLl2mK0YHVbxH25B7D4YV9VdwR/RYJ91sJqLbnh9janaMTOt6+fqChY+gsFFxQ=='
+    LOCALFILENAME= 'local_file_name'
+    CONTAINERNAME= 'data'
+    BLOBNAME= 'time_series_covid_19_confirmed.csv'
+    if casetype=="confirmed":
+            BLOBNAME = "time_series_covid_19_confirmed.csv"
+    elif casetype=="recovered":
+            BLOBNAME = "time_series_covid_19_recovered.csv"
+    elif casetype=="deaths":
+            BLOBNAME = "time_series_covid_19_deaths.csv"
+
+    blob_service=BlockBlobService(account_name=STORAGEACCOUNTNAME,account_key=STORAGEACCOUNTKEY)
+    blob_service.get_blob_to_path(CONTAINERNAME,BLOBNAME,LOCALFILENAME)
+    #message = "File "+ BLOBNAME + "downloaded." 
+    cases_df = pd.read_csv(LOCALFILENAME)
+    cases_df['Lat'] = cases_df['Lat'].astype(float)
+    cases_df['Long'] = cases_df['Long'].astype(float)
+    cases_df['casetype'] = casetype
+    #confirmed = gpd.GeoDataFrame(confirmed_df, geometry=gpd.points_from_xy(confirmed_df.Long, confirmed_df.Lat))
+    cases_df = cases_df.loc[:, ['Province/State','Country/Region','Lat','Long',cases_df.columns[-1],cases_df.columns[-2]]]
+    cases_df = cases_df.dropna()
+    #'split’ : dict like {‘index’ -> [index], ‘columns’ -> [columns], ‘data’ -> [values]}
+    #'records’ : list like [{column -> value}, … , {column -> value}]
+    #'index’ : dict like {index -> {column -> value}}
+    #'columns’ : dict like {column -> {index -> value}}
+    #‘values’ : just the values array
+    #‘table’ : dict like {‘schema’: {schema}, ‘data’: {data}}
+    #strGeoJson = cases_df.to_json(orient="records")
+    #return func.HttpResponse(strGeoJson)
+    return cases_df
