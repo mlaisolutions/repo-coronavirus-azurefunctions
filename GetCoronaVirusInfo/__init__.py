@@ -34,7 +34,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             df['CaseType']=name
         cols = ['Province/State','Country/Region','Lat','Long','LatestDate','LatestCount','CaseType','Confirmed','Deaths','Recovered']
         geojson = df_to_geojson(df, cols,'Lat','Long')
-        geojson_str = json.dumps(geojson, indent=2)
+        geojson_str = json.dumps(geojson)
         return func.HttpResponse(geojson_str)
     else:
         return func.HttpResponse(
@@ -114,6 +114,8 @@ def get_consolidated_data():
     merged.rename(columns = {"Lat_right":'Lat'}, inplace = True)
     merged.rename(columns = {"Long_right":'Long'}, inplace = True)
     merged.rename(columns = {"LatestDate_right":'LatestDate'}, inplace = True)
+    merged.rename(columns = {"Country/Region":'Country/RegionDeleted'}, inplace = True)
+    merged.rename(columns = {"Country":'Country/Region'}, inplace = True)
     #merged.rename(columns = {"lat_right":'Lat',"long_right":'Long',"latestdate_left":'LatestDate'}, inplace = True)
     merged["LatestCount"] = 0
     merged['Lat'] = merged['Lat'].astype(float)
@@ -122,9 +124,16 @@ def get_consolidated_data():
     merged['Confirmed'] = merged['Confirmed'].astype(int)
     merged['Recovered'] = merged['Recovered'].astype(int)
     merged['Deaths'] = merged['Deaths'].astype(int)
-
-    print(confirmed)
-    print(consolidated)
-    print(merged)
+    merged = merged.loc[:, ['Province/State','Country/Region','Lat','Long','LatestDate','LatestCount','CaseType','Confirmed','Deaths','Recovered']]
+    merged.dropna(axis=0,how='any',inplace=True)
+    save_to_storage(merged,"2019_nCoV_data_merged.csv")
     return merged
+def save_to_storage(df,filename):
+    output = df.to_csv (index_label="idx", encoding = "utf-8")
+    STORAGEACCOUNTNAME= 'storagelabcoronavirus'
+    STORAGEACCOUNTKEY= 'OcSGt1fCikgKjViIJTa6D0EcPLl2mK0YHVbxH25B7D4YV9VdwR/RYJ91sJqLbnh9janaMTOt6+fqChY+gsFFxQ=='
+    LOCALFILENAME= 'local_file_name'
+    CONTAINERNAME= 'data'
 
+    blobService = BlockBlobService(account_name=STORAGEACCOUNTNAME, account_key=STORAGEACCOUNTKEY)
+    blobService.create_blob_from_text(CONTAINERNAME, filename, output)
